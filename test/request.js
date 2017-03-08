@@ -17,11 +17,35 @@ describe('request', function() {
     it('handles empty request', function(done) {
       var req = request({});
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/',
         headers: {},
         payload: JSON.stringify({})
+      });
+
+      done();
+    });
+
+    it('maps socket param to request.plugins["hapi-io"]', function(done) {
+      var req = request({
+        route: {
+          method: 'get',
+          path: '/'
+        },
+        socket: 'MY_SOCKET'
+      });
+
+      expect(req).to.equal({
+        method: 'get',
+        url: '/',
+        headers: {},
+        payload: JSON.stringify({}),
+        plugins: {
+          'hapi-io': {
+            socket: 'MY_SOCKET'
+          }
+        }
       });
 
       done();
@@ -36,7 +60,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/?myparam=hello%20world',
         headers: {},
@@ -55,7 +79,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: {},
@@ -81,7 +105,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: {},
@@ -107,7 +131,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/?myparam=hello%20world',
         headers: {},
@@ -133,7 +157,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: { myparam: 'hello world'},
@@ -162,7 +186,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/?myparam=hello%20world',
         headers: {},
@@ -191,7 +215,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/?myparam=hello%20world',
         headers: {},
@@ -219,7 +243,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: {},
@@ -247,7 +271,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/?myparam=hello%20world',
         headers: {},
@@ -275,7 +299,7 @@ describe('request', function() {
         data: { myparam: 'hello world'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: { myparam: 'hello world'},
@@ -286,13 +310,15 @@ describe('request', function() {
     });
 
     it('maps Authorization header from query', function(done) {
+      var socket = {
+        request: {
+          _query: { Authorization: 'MyToken'},
+          headers: {}
+        }
+      };
+
       var req = request({
-        socket: {
-          request: {
-            _query: { Authorization: 'MyToken'},
-            headers: {}
-          }
-        },
+        socket: socket,
         route: {
           method: 'get',
           path: '/'
@@ -300,11 +326,16 @@ describe('request', function() {
         data: {}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/?Authorization=MyToken',
         headers: { Authorization: 'MyToken'},
-        payload: JSON.stringify({})
+        payload: JSON.stringify({}),
+        plugins: {
+          'hapi-io': {
+            socket: socket
+          }
+        }
       });
 
       done();
@@ -319,7 +350,7 @@ describe('request', function() {
         data: { Authorization: 'MyToken'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/?Authorization=MyToken',
         headers: { Authorization: 'MyToken'},
@@ -338,7 +369,7 @@ describe('request', function() {
         data: { authorization: 'MyToken'}
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'post',
         url: '/',
         headers: { authorization: 'MyToken'},
@@ -349,23 +380,30 @@ describe('request', function() {
     });
 
     it('does not map Authorization header when it already exists', function(done) {
+      var socket = {
+        request: {
+          headers: { Authorization: 'MyToken'}
+        }
+      };
+
       var req = request({
-        socket: {
-          request: {
-            headers: { Authorization: 'MyToken'}
-          }
-        },
+        socket: socket,
         route: {
           method: 'get',
           path: '/'
         }
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/',
         headers: { Authorization: 'MyToken'},
-        payload: JSON.stringify({})
+        payload: JSON.stringify({}),
+        plugins: {
+          'hapi-io': {
+            socket: socket
+          }
+        }
       });
 
       done();
@@ -382,7 +420,7 @@ describe('request', function() {
         }
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/blog-post/1',
         headers: {},
@@ -400,7 +438,7 @@ describe('request', function() {
         }
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/blog-post/{blogId}',
         headers: {},
@@ -421,7 +459,7 @@ describe('request', function() {
         }
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/blog-post/1',
         headers: {},
@@ -439,7 +477,7 @@ describe('request', function() {
         }
       });
 
-      expect(req).to.deep.equal({
+      expect(req).to.equal({
         method: 'get',
         url: '/blog-post/',
         headers: {},

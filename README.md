@@ -10,7 +10,6 @@ Awesome socket.io plugin for [hapi](http://hapijs.com/) (inspired by [express.oi
 ##### Table of Contents
 
 * [Installation and Configuration](#installation-and-configuration)
-* [Authorization](#authorization)
 * [Raw access to socket.io](#raw-access-to-socketio)
 * [Forward socket.io events to hapi routes](#forward-events-to-hapi-routes)
 
@@ -32,20 +31,14 @@ server.register({
 
 ##### Options
 
-* `connectionLabel`
-* `socketio` - an object which is passed through to socket.io
-* `auth` - authentication configuration. Value can be:
+* `connectionLabel` (optional)
+* `namespaces` (optional) - an array of strings representing namespaces. Namespaces must always begin with a slash `'/'` (e.g. `'/mynamespace'`. _The default `'/'` namespace is always available irrespective if explicitly specified_, and will be the only namespace available to routes if this option is not set upon plugin initialization.
+* `socketio` (optional) - an object which is passed through to socket.io
+* `auth` (optional) - authorization configuration. Socket.io connections will be refused if they fail authorization. If this option is omitted: all socket.io connections will be accepted, but route level authorization will still be enforced. Value can be:
   * a string with the name of an authentication strategy registered with `server.auth.strategy()`.
   * an object with:
     * `strategies` - a string array of strategy names in order they should be attempted. If only one strategy is used, `strategy` can be used instead with the single string value.
 * `authModeTry` - a boolean which specifies whether a failed authentication should be handled gracefully or not. Default value is `false`, so websocket connections that can not be authenticated are rejected. If you want to allow some unauthenticated websocket connections in your app, then set this to `true` and add `auth: { mode: 'try' }` to the hapi routes as usual.
-
-### Authorization
-
-hapi-io can use a hapi auth strategy to authorize a socket.io connection. The socket.io client will not be able to connect if it fails the authentication check.
-
-See [options](##options) for how to configure.
-
 
 ### Raw access to socket.io
 
@@ -115,13 +108,32 @@ exports.register = function(server, options, next) {
           }
 
           if (request.query.returnType !== 'full') {
-            user = _.omit(user, 'favoriteColor');
+            delete user.favoriteColor;
           }
 
           reply(err, user);
         });
       }
-    }
+    },
+
+    // '/admin' namespace
+    {
+      method: 'GET',
+      path: '/users/{id}',
+      config: {
+        plugins: {
+          'hapi-io': {
+            event: 'create-user',
+            namespace '/admin'
+          }
+        }
+      },
+      handler: function(request, reply) {
+        db.adminUsers.get(request.params.id, function(err, user) {
+          reply(err, user);
+        });
+      }
+     },
 
   ]);
 };
@@ -144,6 +156,13 @@ socket.emit('create-user', {
   returnType: 'full'
 }, function (res) {
   // do something with new user
+});
+
+// '/admin' namespace
+var socketA = io('/admin');
+
+socketA.emit('get-admin-user', { id: 'mmemon'}, function(res) {
+  // res is the result from the hapi route
 });
 ```
 
@@ -170,6 +189,35 @@ The fake HTTP request is constructed as follows:
   5. Otherwise it's mapped as a payload field.
 
 3. Maps "Authorization" attribute from query or data object if possible and not already mapped.
+
+##### Access socket during hapi request
+
+You can access both the socket.io server and socket within the hapi route.
+
+```js
+exports.register = function(server, options, next) {
+
+  server.route({
+    method: 'GET',
+    path: '/users/{id}',
+    config: {
+      plugins: {
+        'hapi-io': 'get-user'
+      }
+    },
+    handler: function(request, reply) {
+      var io = request.plugins['hapi-io'].io;
+      var socket = request.plugins['hapi-io'].socket;
+
+      reply({ success: true });
+
+      if (socket) {
+        // socket is only defined during a hapi-io/socket.io request
+      }
+    }
+  });
+};
+```
 
 ##### Post event hook
 
